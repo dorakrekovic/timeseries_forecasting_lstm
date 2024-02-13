@@ -151,8 +151,6 @@ class PredictionModel():
     def trainCallback(self):
         return EarlyStopping(monitor='loss', patience=self.patience, min_delta=self.min_delta)
 
-    #def modelSave(self):
-        #return ModelCheckpoint('copernicus_1korak___test.h5', monitor='loss', mode='min', save_best_only=True)
 
     def train(self):
         empty_model = self.model
@@ -236,19 +234,19 @@ pivoted['res_unsc'] = [pow(x,2) for x in pivoted['res']]
 
 #print(pivoted.tail(10))
 
-plt.figure(figsize=(30, 15))
-plt.plot(pivoted.index, pivoted.t2m_original, color='blue', label='original')
-plt.plot(pivoted.index, pivoted.t2m_forecast, color='red', label='forecast', alpha=0.6)
-plt.title('Predviđanje temperature - skalirani podatci')
-plt.legend()
-plt.show()
+#plt.figure(figsize=(30, 15))
+#plt.plot(pivoted.index, pivoted.t2m_original, color='blue', label='original')
+#plt.plot(pivoted.index, pivoted.t2m_forecast, color='red', label='forecast', alpha=0.6)
+#plt.title('Predviđanje temperature - skalirani podatci')
+#plt.legend()
+#plt.show()
 
-plt.figure(figsize=(30, 15))
-plt.plot(pivoted.index, pivoted.t2m_unscaled_original - 276.15, color='blue', label='original')
-plt.plot(pivoted.index, pivoted.t2m_unscaled_forecast - 276.15, color='red', label='forecast', alpha=0.6)
-plt.title('Predviđanje temperature')
-plt.legend()
-plt.show()
+#plt.figure(figsize=(30, 15))
+#plt.plot(pivoted.index, pivoted.t2m_unscaled_original - 276.15, color='blue', label='original')
+#plt.plot(pivoted.index, pivoted.t2m_unscaled_forecast - 276.15, color='red', label='forecast', alpha=0.6)
+#plt.title('Predviđanje temperature')
+#plt.legend()
+#plt.show()
 
 pivoted = frame.pivot_table(index='day', columns='type')
 pivoted.columns = ['_'.join(x).strip() for x in pivoted.columns.values]
