@@ -134,7 +134,7 @@ args = {
     'num_epochs': 50,
 }
 
-wandb.init(project="Pytorch-tutorials", config=args)
+wandb.init(project="Pytorch-tutorials-copernicusData", config=args)
 
 model = Lstm_model(input_dim, hidden_size, num_layers).to(device)
 
