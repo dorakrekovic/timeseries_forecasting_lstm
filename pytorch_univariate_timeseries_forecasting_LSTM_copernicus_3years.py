@@ -184,7 +184,6 @@ def test(dataloader):
         losses.append(loss.item())
     loss_test = np.sum(losses) / len(dataloader)
     wandb.log({"epoch": epoch, "epoch/val_loss": loss_test})
-    # print(f"test loss: {loss_test:>8f} ")
     return loss_test
 
 
