@@ -166,7 +166,7 @@ def train(dataloader):
         optimizer.step()
     loss_train = np.sum(losses) / len(dataloader)
     # Logging the losses
-    wandb.log({"epoch": epoch, "train_loss": loss_train})
+    wandb.log({"epoch": epoch, "epoch/loss": loss_train})
     # print(f"train loss: {loss_train:>8f} ")
     return loss_train
 
@@ -184,7 +184,7 @@ def test(dataloader):
         loss = loss_fn(out.reshape(batch_size), y)
         losses.append(loss.item())
     loss_test = np.sum(losses) / len(dataloader)
-    wandb.log({"epoch": epoch, "test_loss": loss_test})
+    wandb.log({"epoch": epoch, "epoch/val_loss": loss_test})
     # print(f"test loss: {loss_test:>8f} ")
     return loss_test
 
