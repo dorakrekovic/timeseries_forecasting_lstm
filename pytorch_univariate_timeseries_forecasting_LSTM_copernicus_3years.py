@@ -199,11 +199,6 @@ for epoch in range(epochs):
         print(train_losses[epoch], test_losses[epoch])
 
 
-plt.plot(train_losses, label="train")
-plt.plot(test_losses, label="test")
-plt.legend()
-plt.show()
-
 import math
 from sklearn.metrics import mean_squared_error
 import numpy as np
