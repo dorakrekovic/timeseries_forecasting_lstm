@@ -1,4 +1,3 @@
-#copernicus_1h_3y_data
 from sklearn.metrics import mean_squared_error
 from math import sqrt
 import pandas as pd
@@ -11,8 +10,10 @@ from tensorflow import keras
 from tensorflow.python.keras import Input, Model
 from tensorflow.python.keras.callbacks import EarlyStopping, ModelCheckpoint
 from tensorflow.python.keras.layers import LSTM, Dense
+from wandb.integration.keras import WandbCallback
+
 import wandb
-from wandb.keras import WandbMetricsLogger
+from wandb.keras import WandbMetricsLogger, WandbModelCheckpoint
 
 
 def create_X_Y(ts: np.array, lag=1, n_ahead=1, target_index=0) -> tuple:
@@ -49,32 +50,6 @@ features = ['t2m']
 d = d.groupby('datetime', as_index=False)[features].mean()
 #print(d[features].describe())
 
-d['date'] = [x.date() for x in d['datetime']]
-d['hour'] = [x.hour for x in d['datetime']]
-d['month'] = [x.month for x in d['datetime']]
-
-#d.boxplot('t2m', by='hour', figsize=(12, 8), grid=False)
-#plt.show()
-#d.boxplot('t2m', by='month', figsize=(12, 8), grid=False)
-#plt.show()
-
-# Kreiranje cikličke dnevne značajke
-d['day_cos'] = [np.cos(x * (2 * np.pi / 24)) for x in d['hour']]
-d['day_sin'] = [np.sin(x * (2 * np.pi / 24)) for x in d['hour']]
-
-dsin = d[['datetime', 't2m', 'hour', 'day_sin', 'day_cos']].head(25).copy()
-dsin['day_sin'] = [round(x, 3) for x in dsin['day_sin']]
-dsin['day_cos'] = [round(x, 3) for x in dsin['day_cos']]
-#print(dsin)
-
-d['timestamp'] = [x.timestamp() for x in d['datetime']]
-# Sekunde u danu
-s = 24 * 60 * 60
-# Sekunde u godini
-year = (365.25) * s
-d['month_cos'] = [np.cos((x) * (2 * np.pi / year)) for x in d['timestamp']]
-d['month_sin'] = [np.sin((x) * (2 * np.pi / year)) for x in d['timestamp']]
-
 # Broj lagova koristenih u modelu
 lag = 24
 
@@ -85,10 +60,10 @@ n_ahead = 1
 test_share = 0.1
 
 # Broj epoha za treniranje
-epochs = 100
+epochs = 50
 
 # Batch size
-batch_size = 128
+batch_size = 32
 
 # Stopa ucenja
 lr = 0.001
@@ -97,7 +72,7 @@ lr = 0.001
 n_layer = 50
 
 
-features_final = ['t2m', 'day_cos', 'day_sin', 'month_sin', 'month_cos']
+features_final = ['t2m']
 
 #print(d[features_final].head(10))
 
@@ -107,7 +82,7 @@ ts = d[features_final]
 nrows = ts.shape[0]
 
 # Initialize a new W&B run
-wandb.init(project="Pytorch-tutorials-more_data", config={"bs": 12})
+wandb.init(project="Inference", config={"bs": 32})
 
 # Podjela u skup za treniranje i testiranje
 train = ts[0:int(nrows * (1 - test_share))]
@@ -154,9 +129,11 @@ class PredictionModel():
         self.min_delta = min_delta
         self.patience = patience
 
-    def trainCallback(self):
-        return EarlyStopping(monitor='loss', patience=self.patience, min_delta=self.min_delta)
+    #def trainCallback(self):
+        #return EarlyStopping(monitor='loss', patience=self.patience, min_delta=self.min_delta)
 
+    def modelSave(self):
+        return ModelCheckpoint('model_inference_tensorflow.h5', monitor='loss', mode='min', save_best_only=True)
 
     def train(self):
         empty_model = self.model
@@ -170,7 +147,7 @@ class PredictionModel():
                 batch_size=self.batch,
                 validation_data=(self.Xval, self.Yval),
                 shuffle=False,
-                callbacks=[self.trainCallback(), WandbMetricsLogger()])
+                callbacks=[self.modelSave(), WandbMetricsLogger(), WandbModelCheckpoint("model-tensorflow-u"), WandbCallback()])
         else:
             history = empty_model.fit(
                 self.X,
@@ -200,7 +177,21 @@ model = PredictionModel(
 )
 model.model.summary()
 
+
+
 history = model.train()
+
+WandbCallback(
+    monitor="val_loss", verbose=0, mode="auto", save_weights_only=(False),
+    log_weights=(True), log_gradients=(True), save_model=(True),
+    training_data=(X,Y), validation_data=(X,Y), labels=None,
+    generator=None, input_type=None, output_type=None, log_evaluation=(False),
+    validation_steps=None, class_colors=None, log_batch_frequency=None,
+    log_best_prefix="best_", save_graph=(True), validation_indexes=None,
+    validation_row_processor=None, prediction_row_processor=None, predictions=24,
+    infer_missing_processors=(True), log_evaluation_frequency=0,
+    compute_flops=(False),
+)
 
 loss = history.history.get('loss')
 val_loss = history.history.get('val_loss')
