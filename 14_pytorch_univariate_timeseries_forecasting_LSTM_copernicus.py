@@ -1,4 +1,3 @@
-#14_pytorch_univariate_timeseries_forecasting_LSTM_copernicus
 #!/usr/bin/env python
 # General design
 # One-step-ahead
@@ -11,7 +10,7 @@ from sklearn.preprocessing import StandardScaler, RobustScaler
 import seaborn as sns
 import wandb
 
-df = pd.read_csv("allt2m_datetime.csv")
+df = pd.read_csv("Copernicus_skenerovci_2019_2021.csv")
 
 df.head(1)
 
@@ -21,11 +20,10 @@ df.info()
 
 train_dates = pd.to_datetime(df['datetime'])
 
-
 train_dates.head(1)
 
 # variables for training
-cols = list(df)[1:2]  # ['Open', 'High', 'Low', 'Close', 'Adj Close']
+cols = list(df)[1:2]
 
 df_for_training = df[cols].astype(float)
 
@@ -39,7 +37,7 @@ df_for_training_scaled.shape
 plt.plot(df_for_training_scaled)
 plt.show()
 
-np.savetxt("scaled.csv", df_for_training_scaled, delimiter=',')
+np.savetxt("scaled_new.csv", df_for_training_scaled, delimiter=',')
 
 ##splitting dataset into train and test split for time series data
 training_size = int(len(df_for_training_scaled) * 0.65)
@@ -51,13 +49,16 @@ train_data.shape, test_data.shape
 
 train_data[0], test_data[0]
 
+# Define the path to save the model
+saved_model_path = 'trained_model_torch.pth'
+
 import torch
 import torch.nn as nn
 from torch.utils.data import Dataset, DataLoader
 
 device = "cuda" if torch.cuda.is_available() else "cpu"
 
-past_observation = 10
+past_observation = 24
 
 
 class SequenceDataset(Dataset):
@@ -65,7 +66,6 @@ class SequenceDataset(Dataset):
         self.data = data
         self.data = torch.from_numpy(data).float().view(-1)
         self.past_len = past_len
-        print("prosao")
 
     def __len__(self):
         return len(self.data) - self.past_len - 1
@@ -77,14 +77,13 @@ class SequenceDataset(Dataset):
 train_dataset = SequenceDataset(train_data, past_len=past_observation)
 test_dataset = SequenceDataset(test_data, past_len=past_observation)
 
-
 train_dataset[0]
 
 train_dataset[1]
 
 train_dataset[2]
 
-batch_size = 4
+batch_size = 32
 train_dataloader = DataLoader(train_dataset, batch_size, drop_last=True)
 test_dataloader = DataLoader(test_dataset, batch_size, drop_last=True)
 
@@ -127,22 +126,22 @@ args = {
     'input_dim': 1,
     'hidden_size': 30,
     'num_layers': 5,
-    'past_observation': 10,
-    'batch_size': 4,
+    'past_observation': 24,
+    'batch_size': 32,
     'optimizer': 'AdamW',
     'loss_function': 'MSELoss',
     'num_epochs': 50,
 }
 
-wandb.init(project="Pytorch-tutorials-copernicusData", config=args)
+wandb.init(project="Model comparison - univariate", config=args)
 
 model = Lstm_model(input_dim, hidden_size, num_layers).to(device)
 
 # Watch the model
 wandb.watch(model, log_freq=100)
-#from torchsummary import summary
+# from torchsummary import summary
 
-#summary(model,)
+# summary(model,)
 
 loss_fn = nn.MSELoss()
 optimizer = torch.optim.AdamW(model.parameters(), lr=1e-4)
@@ -166,10 +165,13 @@ def train(dataloader):
         optimizer.step()
     loss_train = np.sum(losses) / len(dataloader)
     # Logging the losses
-    wandb.log({"epoch": epoch, "epoch/loss": loss_train})
+    wandb.log({"epoch/epoch": epoch, "epoch/loss": loss_train})
     # print(f"train loss: {loss_train:>8f} ")
     return loss_train
 
+
+torch.save(model.state_dict(), saved_model_path)
+print(f"Model saved at {saved_model_path}")
 
 
 def test(dataloader):
@@ -184,7 +186,7 @@ def test(dataloader):
         loss = loss_fn(out.reshape(batch_size), y)
         losses.append(loss.item())
     loss_test = np.sum(losses) / len(dataloader)
-    wandb.log({"epoch": epoch, "epoch/val_loss": loss_test})
+    wandb.log({"epoch/epoch": epoch, "epoch/val_loss": loss_test})
     # print(f"test loss: {loss_test:>8f} ")
     return loss_test
 
@@ -198,7 +200,6 @@ for epoch in range(epochs):
     if epoch % 5 == 0:
         print(f"epoch {epoch} ")
         print(train_losses[epoch], test_losses[epoch])
-
 
 plt.plot(train_losses, label="train")
 plt.plot(test_losses, label="test")
@@ -233,5 +234,3 @@ def calculate_metrics(data_loader):
 print("final loss metrics after inversing scaling")
 print(f"train mse loss {calculate_metrics(train_dataloader)}")
 print(f"test mse loss {calculate_metrics(test_dataloader)}")
-
-
